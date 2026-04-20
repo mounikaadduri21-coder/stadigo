@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StadiGo</title>
+    <style>
+        /* CSS reset and design tokens */
+        :root {
+            --bg: #0b0f14;
+            --card: #111827;
+            --accent: #22c55e;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+            --text: #e5e7eb;
+            --text-muted: #9ca3af;
+            --radius: 16px;
+            --spacing: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-size: 16px;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        #app {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 480px;
+            /* Mobile first, centered on larger screens */
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Phase Sections */
+        .phase {
+            display: none;
+            flex: 1;
+            padding: calc(var(--spacing) * 3);
+            flex-direction: column;
+            animation: slideFadeIn 250ms ease-out forwards;
+        }
+
+        .phase.active {
+            display: flex;
+        }
+
+        @keyframes slideFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            margin-bottom: var(--spacing);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: calc(var(--spacing) * 2);
+        }
+
+        p {
+            margin-bottom: calc(var(--spacing) * 2);
+            color: var(--text-muted);
+        }
+
+        .tagline {
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: calc(var(--spacing) * 1);
+            font-size: 1.1rem;
+        }
+
+        .sub-headline {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-bottom: calc(var(--spacing) * 4);
+        }
+
+        .logo-sg {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #3b82f6, #22c55e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            line-height: 1;
+        }
+
+        /* Buttons & Interactivity */
+        button {
+            background-color: var(--card);
+            color: var(--text);
+            border: 2px solid #374151;
+            border-radius: var(--radius);
+            padding: calc(var(--spacing) * 2);
+            font-size: 1.1rem;
+            min-height: 48px;
+            /* Min 44px required */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: calc(var(--spacing) * 1.5);
+            margin-bottom: calc(var(--spacing) * 2);
+            transition: transform 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out;
+            width: 100%;
+        }
+
+        button.primary {
+            background-color: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+            font-weight: 700;
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        /* Highlight color feedback for tap */
+        button.primary:active:not(:disabled) {
+            background-color: #16a34a;
+            border-color: #16a34a;
+        }
+
+        button:not(.primary):active:not(:disabled) {
+            background-color: #1f2937;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Toast & Loader Notifications */
+        #loader,
+        #toast {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card);
+            padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+            border-radius: var(--radius);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            gap: calc(var(--spacing) * 1.5);
+            border: 1px solid #374151;
+            white-space: nowrap;
+        }
+
+        #loader {
+            top: 35%;
+        }
+
+        #toast {
+            bottom: calc(var(--spacing) * 4);
+            transition: opacity 300ms ease-out;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Phase 1 specific styles */
+        #ticketResult {
+            display: none;
+            background: var(--card);
+            padding: calc(var(--spacing) * 3);
+            border-radius: var(--radius);
+            border: 1px solid var(--accent);
+            margin-top: calc(var(--spacing) * 2);
+            animation: slideFadeIn 250ms ease-out forwards;
+        }
+
+        .ticket-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: calc(var(--spacing) * 2);
+            margin-bottom: calc(var(--spacing) * 2.5);
+        }
+
+        .ticket-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ticket-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ticket-val {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .ticket-msg {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--accent);
+            padding: calc(var(--spacing) * 2);
+            border-radius: calc(var(--radius) - 4px);
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        /* Bottom Thumb Zone Actions */
+        .bottom-actions {
+            margin-top: auto;
+            padding-top: calc(var(--spacing) * 4);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing);
+        }
+
+        .bottom-actions.row {
+            flex-direction: row;
+        }
+
+        /* Phase 2: Map Styles */
+        .map-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid #374151;
+            overflow: hidden;
+        }
+
+        .field {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60%;
+            height: 40%;
+            background-color: #166534;
+            border-radius: 40px;
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .field::after {
+            content: '';
+            position: absolute;
+            width: 15%;
+            height: 40%;
+            background-color: #d2b48c;
+            border-radius: 2px;
+        }
+
+        .map-node {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+            width: 44px;
+            height: 44px;
+            background: var(--bg);
+            border: 1px solid #374151;
+            z-index: 20;
+        }
+
+        /* Node fixed positions */
+        #userLocation {
+            bottom: 15%;
+            left: 10%;
+        }
+
+        #food1 {
+            top: 15%;
+            right: 15%;
+        }
+
+        #food2 {
+            top: 45%;
+            right: 15%;
+        }
+
+        #washroom1 {
+            top: 15%;
+            left: 15%;
+        }
+
+        #washroom2 {
+            top: 45%;
+            left: 15%;
+        }
+
+        #gate1 {
+            top: 75%;
+            left: 5%;
+        }
+
+        #gate2 {
+            top: 75%;
+            right: 5%;
+        }
+
+        #gate3 {
+            bottom: 5%;
+            left: calc(50% - 22px);
+        }
+
+        .recommended-gate {
+            box-shadow: 0 0 10px 2px var(--accent) !important;
+            border-color: var(--accent) !important;
+        }
+
+        .recommended-gate::after {
+            content: "Recommended";
+            position: absolute;
+            bottom: -20px;
+            font-size: 0.65rem;
+            color: var(--accent);
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        .map-node:active {
+            transform: scale(0.85);
+        }
+
+        .map-node.selected {
+            box-shadow: 0 0 0 2px var(--accent);
+            background-color: rgba(34, 197, 94, 0.2);
+        }
+
+        .node-crowd-green {
+            border-bottom: 3px solid var(--accent);
+        }
+
+        .node-crowd-yellow {
+            border-bottom: 3px solid var(--warn);
+        }
+
+        .node-crowd-red {
+            border-bottom: 3px solid var(--danger);
+        }
+
+        .map-legend {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: calc(var(--spacing) * 2);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot.low {
+            background: var(--accent);
+        }
+
+        .dot.med {
+            background: var(--warn);
+        }
+
+        .dot.high {
+            background: var(--danger);
+        }
+
+        #mapSelection {
+            min-height: 80px;
+            margin-top: calc(var(--spacing) * 2);
+            padding: calc(var(--spacing) * 2);
+            background: #1f2937;
+            border-radius: var(--radius);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Phase 3 Styles */
+        .nav-btn {
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.9rem;
+            padding: 8px;
+            margin: 0;
+            min-height: 60px;
+        }
+
+        .nav-btn.active {
+            border-color: var(--accent);
+            background-color: rgba(34, 197, 94, 0.2);
+            color: var(--accent);
+        }
+
+        .nav-path-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Helper */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Global UI Elements -->
+        <div id="loader">
+            <div class="spinner"></div>
+            <span id="loaderText">Loading...</span>
+        </div>
+
+        <div id="toast">Message</div>
+
+        <!-- ==============================================
+             PHASE 1: BASIC SETUP
+             ============================================== -->
+        <div id="phase1" class="phase active">
+            <div style="text-align: center; margin-top: 1rem;">
+                <div class="logo-sg">SG</div>
+                <h1>StadiGo</h1>
+                <p class="tagline">"Skip the crowd. Feel the game."</p>
+                <p class="sub-headline">Your ultimate smart stadium companion.</p>
+            </div>
+
+            <div id="setupContent">
+                <p style="text-align: center;" id="hintText">Scan or upload your ticket to get started.</p>
+
+                <button id="scanBtn" class="primary" onclick="simulateTicketScan('scan')">
+                    📷 Scan Ticket
+                </button>
+                <button id="uploadBtn" onclick="simulateTicketUpload()">
+                    📤 Upload Ticket
+                </button>
+            </div>
+
+            <div id="ticketResult">
+                <div class="ticket-grid">
+                    <div class="ticket-item">
+                        <span class="ticket-label">Gate</span>
+                        <span class="ticket-val" id="resGate">-</span>
+                    </div>
+                    <div class="ticket-item">
+                        <span class="ticket-label">Section</span>
+                        <span class="ticket-val" id="resSection">-</span>
+                    </div>
+                    <div class="ticket-item">
+                        <span class="ticket-label">Row</span>
+                        <span class="ticket-val" id="resRow">-</span>
+                    </div>
+                    <div class="ticket-item">
+                        <span class="ticket-label">Seat</span>
+                        <span class="ticket-val" id="resSeat">-</span>
+                    </div>
+                </div>
+                <div class="ticket-msg" id="resMsg"></div>
+
+                <div class="bottom-actions">
+                    <button class="primary" onclick="nextPhase()">Continue to Map 🗺️</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==============================================
+             PHASE 2: MAP + CROWD
+             ============================================== -->
+        <div id="phase2" class="phase">
+            <h2>Stadium Map</h2>
+
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="dot low"></div> No wait
+                </div>
+                <div class="legend-item">
+                    <div class="dot med"></div> Medium
+                </div>
+                <div class="legend-item">
+                    <div class="dot high"></div> High
+                </div>
+            </div>
+
+            <div id="phase2MapPlaceholder">
+                <div id="map" class="map-container">
+                    <div class="field"></div>
+                    <div id="userLocation" class="map-node">📍</div>
+                    <div id="food1" class="map-node node-crowd-yellow" onclick="selectNode('food1')">🍔</div>
+                    <div id="food2" class="map-node node-crowd-green" onclick="selectNode('food2')">🍔</div>
+                    <div id="washroom1" class="map-node node-crowd-red" onclick="selectNode('washroom1')">🚻</div>
+                    <div id="washroom2" class="map-node node-crowd-green" onclick="selectNode('washroom2')">🚻</div>
+                    <div id="gate1" class="map-node node-crowd-red" onclick="selectNode('gate1')">🚪</div>
+                    <div id="gate2" class="map-node node-crowd-yellow" onclick="selectNode('gate2')">🚪</div>
+                    <div id="gate3" class="map-node node-crowd-green recommended-gate" onclick="selectNode('gate3')">🚪
+                    </div>
+                    <svg id="routeSvg" class="nav-path-svg"></svg>
+                </div>
+            </div>
+
+            <div id="mapSelection">
+                <p style="margin:0; color: var(--text-muted);">Tap a destination on the map.</p>
+            </div>
+
+            <div class="bottom-actions row">
+                <button onclick="prevPhase()" style="flex: 1;">Back</button>
+                <button id="btnMapNext" class="primary" onclick="nextPhase()" style="flex: 2;" disabled>Next:
+                    Navigation</button>
+            </div>
+        </div>
+
+        <!-- ==============================================
+             PHASE 3: NAVIGATION
+             ============================================== -->
+        <div id="phase3" class="phase">
+            <h2>Navigation</h2>
+
+            <div id="naviGuidance"
+                style="background: rgba(34, 197, 94, 0.1); color: var(--accent); padding: calc(var(--spacing) * 2); border-radius: var(--radius); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.5rem;">🐶</span>
+                <span id="naviText">Navi: Select a destination. I’ll guide you through the fastest route.</span>
+            </div>
+
+            <div class="nav-controls"
+                style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                <button id="btnNavRest" class="nav-btn"
+                    onclick="startNavigationByCategory('washroom', this)">🚻<br>Washroom</button>
+                <button id="btnNavFood" class="nav-btn"
+                    onclick="startNavigationByCategory('food', this)">🍔<br>Food</button>
+                <button id="btnNavGate" class="nav-btn"
+                    onclick="startNavigationByCategory('gate', this)">🚪<br>Gate</button>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button id="btnMic" onclick="simulateVoice()" style="flex: 1; min-height: 44px; margin: 0;">🎤
+                    Voice</button>
+                <button id="btnReset" onclick="resetNavigation()"
+                    style="flex: 1; min-height: 44px; margin: 0;">Reset</button>
+            </div>
+
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="dot low"></div> No wait
+                </div>
+                <div class="legend-item">
+                    <div class="dot med"></div> Medium
+                </div>
+                <div class="legend-item">
+                    <div class="dot high"></div> High
+                </div>
+            </div>
+
+            <div id="navMapPlaceholder">
+                <!-- Map will be moved here -->
+            </div>
+
+            <div class="bottom-actions row">
+                <button onclick="prevPhase()" style="flex: 1;">Back</button>
+                <button id="btnNavNext" class="primary" onclick="nextPhase()" style="flex: 2;">Next: Alerts</button>
+            </div>
+        </div>
+
+        <!-- ==============================================
+             PHASE 4: ALERTS
+             ============================================== -->
+        <div id="phase4" class="phase">
+            <h2>Live Alerts</h2>
+            <div id="alerts"
+                style="background: var(--bg); border-radius: var(--radius); text-align: left; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; max-height: 60vh;">
+                <!-- Alerts will be rendered here -->
+            </div>
+            <div class="bottom-actions row">
+                <button onclick="handleDebouncedClick(prevPhase)" style="flex: 1;">Back to Navigation</button>
+                <button class="primary" onclick="handleDebouncedClick(nextPhase)" style="flex: 2;">Next:
+                    Experience</button>
+            </div>
+        </div>
+
+        <!-- ==============================================
+             PHASE 5: EXPERIENCE
+             ============================================== -->
+        <div id="phase5" class="phase" style="overflow-y: auto; padding-top: 0;">
+            <div id="matchStrip"
+                style="background: rgba(17, 24, 39, 0.95); backdrop-filter: blur(8px); padding: 16px; text-align: center; border-bottom: 1px solid var(--accent); box-shadow: 0 4px 15px rgba(34, 197, 94, 0.15); margin: 0 -24px 24px -24px; position: sticky; top: 0; z-index: 10;">
+                <div style="font-weight: bold; font-size: 1.1rem; color: var(--text);">IND 142/3 (15.2) 📊</div>
+                <div style="color: var(--accent); font-weight: bold; margin: 4px 0;">WICKET 🎉</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">Next over starts in 2:00 🏏</div>
+            </div>
+
+            <h2 style="margin-top: 8px;">Experience</h2>
+
+            <button id="btnReachedSeat" class="primary" onclick="markSeatReached(this)">I'm at my Seat 🪑</button>
+
+            <button onclick="simulateMatchEnd(this)" style="margin-top: auto; margin-bottom: 24px;">Simulate Match End
+                🏁</button>
+
+            <div id="exitStrategyCard"
+                style="display: none; background: var(--card); padding: 16px; border-radius: var(--radius); border: 1px solid var(--warn); gap: 12px; align-items: center; margin-bottom: 24px; animation: slideFadeIn 250ms ease-out forwards;">
+                <div
+                    style="font-size: 1.5rem; display: flex; align-items: center; justify-content: center; width: 32px;">
+                    🚪</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: bold; color: var(--warn); margin-bottom: 2px;">Exit Strategy</div>
+                    <div style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.4;">Match over! Gate 4 is
+                        highly crowded (~25 mins). Wait 10 mins or take the East Route to Gate 2 for a faster exit.
+                    </div>
+                </div>
+            </div>
+
+            <div class="bottom-actions row" style="padding-top: 0; margin-top: 0;">
+                <button onclick="handleDebouncedClick(prevPhase)" style="flex: 1; margin-bottom: 0;">Back to
+                    Alerts</button>
+                <button class="primary" onclick="goToPhase(1)" style="flex: 1; margin-bottom: 0;">Start Over</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ------------------------------------------------
+        // App State
+        // ------------------------------------------------
+        const state = {
+            currentPhase: 1,
+            ticketData: null,
+            selectedDestination: null,
+            language: 'en'
+        };
+
+        // ------------------------------------------------
+        // DOM Elements Configuration
+        // ------------------------------------------------
+        const els = {
+            phases: [
+                document.getElementById('phase1'),
+                document.getElementById('phase2'),
+                document.getElementById('phase3'),
+                document.getElementById('phase4'),
+                document.getElementById('phase5')
+            ],
+            loader: document.getElementById('loader'),
+            loaderText: document.getElementById('loaderText'),
+            toast: document.getElementById('toast'),
+            scanBtn: document.getElementById('scanBtn'),
+            uploadBtn: document.getElementById('uploadBtn'),
+            ticketResult: document.getElementById('ticketResult'),
+            setupContent: document.getElementById('setupContent'),
+            hintText: document.getElementById('hintText'),
+
+            // Phase 2
+            mapContainer: document.getElementById('map'),
+            mapSelection: document.getElementById('mapSelection'),
+            btnMapNext: document.getElementById('btnMapNext'),
+
+            // Phase 3
+            navMapPlaceholder: document.getElementById('navMapPlaceholder'),
+            phase2MapPlaceholder: document.getElementById('phase2MapPlaceholder'),
+            naviText: document.getElementById('naviText'),
+            btnNavNext: document.getElementById('btnNavNext'),
+            navSvg: document.getElementById('routeSvg'),
+            navBtns: document.querySelectorAll('.nav-btn'),
+            btnMic: document.getElementById('btnMic'),
+            btnReset: document.getElementById('btnReset')
+        };
+
+        // ------------------------------------------------
+        // Define Node Data
+        // ------------------------------------------------
+        const nodes = {
+            gate1: { id: "gate1", crowd: "red", time: "25 mins", category: "gate", label: "Gate 1" },
+            gate2: { id: "gate2", crowd: "yellow", time: "15 mins", category: "gate", label: "Gate 2" },
+            gate3: { id: "gate3", crowd: "green", time: "6 mins", recommended: true, category: "gate", label: "Gate 3" },
+            food1: { id: "food1", crowd: "yellow", time: "15 mins", category: "food", label: "Food 1" },
+            food2: { id: "food2", crowd: "green", time: "6 mins", category: "food", label: "Food 2" },
+            washroom1: { id: "washroom1", crowd: "red", time: "25 mins", category: "washroom", label: "Washroom 1" },
+            washroom2: { id: "washroom2", crowd: "green", time: "5 mins", category: "washroom", label: "Washroom 2" }
+        };
+
+        // ------------------------------------------------
+        // Utilities & Interactions
+        // ------------------------------------------------
+        function showLoader(msg = "Loading...") {
+            els.loaderText.textContent = msg;
+            els.loader.style.display = 'flex';
+        }
+
+        function hideLoader() {
+            els.loader.style.display = 'none';
+        }
+
+        function showToast(msg, duration = 3000) {
+            els.toast.textContent = msg;
+            els.toast.style.display = 'flex';
+            setTimeout(() => {
+                els.toast.style.opacity = '0';
+                setTimeout(() => {
+                    els.toast.style.display = 'none';
+                    els.toast.style.opacity = '1';
+                }, 300); // Wait for fade out
+            }, duration);
+        }
+
+        function vibrate(duration = 100) {
+            if (navigator.vibrate) {
+                navigator.vibrate(duration);
+            }
+        }
+
+        // ------------------------------------------------
+        // Navigation / Phase Transitions
+        // ------------------------------------------------
+        function goToPhase(phaseNum) {
+            if (phaseNum < 1 || phaseNum > 5) return;
+            const previousPhase = state.currentPhase;
+
+            // Hide all phases
+            els.phases.forEach(p => p.classList.remove('active'));
+
+            // Show target phase
+            els.phases[phaseNum - 1].classList.add('active');
+            state.currentPhase = phaseNum;
+
+            // Reset Phase 1 view if returning to it
+            if (phaseNum === 1 && state.ticketData) {
+                resetTicket();
+            }
+
+            // Phase 2 logic
+            if (phaseNum === 2) {
+                if (els.phase2MapPlaceholder) els.phase2MapPlaceholder.appendChild(els.mapContainer);
+                if (els.navSvg) els.navSvg.style.display = 'none'; // hide nav path
+                renderMap();
+                if (!state.selectedDestination) {
+                    els.mapSelection.innerHTML = '<p style="margin:0; color: var(--text-muted);">Tap a destination on the map.</p>';
+                    els.btnMapNext.disabled = true;
+                }
+            }
+
+            // Phase 3 logic
+            if (phaseNum === 3) {
+                if (els.navMapPlaceholder) els.navMapPlaceholder.appendChild(els.mapContainer);
+                if (previousPhase !== 4) {
+                    resetNavigation();
+                }
+            }
+
+            // Phase 4 logic
+            if (phaseNum === 4) {
+                renderAlerts();
+            }
+        }
+
+        function nextPhase() {
+            goToPhase(state.currentPhase + 1);
+        }
+
+        function prevPhase() {
+            goToPhase(state.currentPhase - 1);
+        }
+
+        // ------------------------------------------------
+        // Phase 1 Logic: Setup & Ticket
+        // ------------------------------------------------
+
+        // Debounce flag to prevent rapid repeated clicks
+        let isProcessing = false;
+
+        function simulateTicketUpload() {
+            if (isProcessing) return;
+            alert("For demo purposes, a sample ticket has been auto-uploaded.");
+
+            // Set mock ticket data
+            state.ticketData = {
+                gate: 3,
+                section: "A",
+                row: "B",
+                seat: 12,
+                walkTime: 3
+            };
+
+            renderTicketData();
+        }
+
+        function simulateTicketScan(actionType) {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            // Disable buttons temporarily
+            els.scanBtn.disabled = true;
+            els.uploadBtn.disabled = true;
+
+            showLoader(actionType === 'scan' ? "Scanning ticket..." : "Uploading ticket...");
+
+            // Simulate mock loading processing delay (700-1200ms)
+            const mockDelay = Math.floor(Math.random() * 500) + 700;
+
+            setTimeout(() => {
+                hideLoader();
+                isProcessing = false;
+                els.scanBtn.disabled = false;
+                els.uploadBtn.disabled = false;
+
+                // Set mock ticket data
+                state.ticketData = {
+                    gate: 3,
+                    section: "A",
+                    row: "B",
+                    seat: 12,
+                    walkTime: 3
+                };
+
+                renderTicketData();
+
+                vibrate(100);
+                showToast("Ticket read successfully!");
+
+            }, mockDelay);
+        }
+
+        function renderTicketData() {
+            // Update UI with mock data
+            document.getElementById('resGate').textContent = state.ticketData.gate;
+            document.getElementById('resSection').textContent = state.ticketData.section;
+            document.getElementById('resRow').textContent = state.ticketData.row;
+            document.getElementById('resSeat').textContent = state.ticketData.seat;
+
+            document.getElementById('resMsg').textContent =
+                `Your seat is near Gate ${state.ticketData.gate}. Recommended entry: Gate ${state.ticketData.gate} (~5–8 min walk).`;
+
+            // Transition view
+            els.setupContent.classList.add('hidden');
+            els.ticketResult.style.display = 'block';
+        }
+
+        function resetTicket() {
+            state.ticketData = null;
+            els.setupContent.classList.remove('hidden');
+            els.ticketResult.style.display = 'none';
+        }
+
+        // ------------------------------------------------
+        // Phase 2 Logic: Map & Crowd
+        // ------------------------------------------------
+        function renderMap() {
+            // No-op for Grid rendering since map is now static in HTML
+            updateMapHighlight();
+        }
+
+        function selectNode(nodeKey) {
+            if (state.currentPhase === 3) {
+                startNavigation(nodeKey);
+                return;
+            }
+
+            let nodeData = nodes[nodeKey];
+            if (!nodeData) return;
+
+            if (state.selectedDestination && state.selectedDestination.id === nodeData.id) {
+                return;
+            }
+
+            vibrate(50);
+
+            state.selectedDestination = nodeData;
+            els.btnMapNext.disabled = false;
+            updateMapHighlight();
+
+            let crowdColor = nodeData.crowd === 'green' ? 'var(--accent)' : (nodeData.crowd === 'yellow' ? 'var(--warn)' : 'var(--danger)');
+            let html = '<div style="font-weight: bold; font-size: 1.1rem; color: ' + crowdColor + ';">' + nodeData.label + '</div>';
+            html += '<div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Wait time: ~' + nodeData.time + '</div>';
+
+            if (nodeData.crowd === 'red') {
+                html += '<div style="margin-top: 8px; color: var(--warn); font-size: 0.85rem;">⚠️ High wait time.</div>';
+            }
+
+            els.mapSelection.innerHTML = html;
+        }
+
+        function updateMapHighlight() {
+            document.querySelectorAll('.map-node').forEach(el => {
+                if (state.selectedDestination && el.id === state.selectedDestination.id) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+        }
+
+        // ------------------------------------------------
+        // Phase 3 Logic: Navigation
+        // ------------------------------------------------
+        function drawRoute(targetId) {
+            const routeSvg = document.getElementById('routeSvg');
+            // FIX 2: Every time a destination is clicked, clear the old line
+            routeSvg.innerHTML = "";
+
+            // FIX 2: STARTING POINT MUST ALWAYS be "You Are Here" user location node
+            const startEl = document.getElementById('userLocation');
+            const endEl = document.getElementById(targetId);
+            const mapEl = document.getElementById('map');
+
+            if (!startEl || !endEl || !mapEl) return;
+
+            const startRect = startEl.getBoundingClientRect();
+            const endRect = endEl.getBoundingClientRect();
+            const mapRect = mapEl.getBoundingClientRect();
+
+            const startX = startRect.left - mapRect.left + startRect.width / 2;
+            const startY = startRect.top - mapRect.top + startRect.height / 2;
+            const endX = endRect.left - mapRect.left + endRect.width / 2;
+            const endY = endRect.top - mapRect.top + endRect.height / 2;
+
+            let cornerX, cornerY;
+            const pitchTop = mapRect.height * 0.3;
+            const pitchBottom = mapRect.height * 0.7;
+
+            if (endY > pitchTop && endY < pitchBottom) {
+                cornerX = endX;
+                cornerY = startY;
+            } else {
+                cornerX = startX;
+                cornerY = endY;
+            }
+
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+            path.setAttribute("points", `${startX},${startY} ${cornerX},${cornerY} ${endX},${endY}`);
+            path.style.fill = "none";
+            path.style.stroke = "var(--accent)";
+            path.style.strokeWidth = "4";
+            path.style.strokeDasharray = "8,5";
+            path.style.strokeLinejoin = "miter";
+
+            routeSvg.appendChild(path);
+            routeSvg.style.display = "block";
+        }
+
+        function startNavigationByCategory(category, btnEl) {
+            const bestNodeKey = Object.keys(nodes).find(k => nodes[k].category === category && nodes[k].crowd === 'green');
+            if (bestNodeKey) {
+                startNavigation(bestNodeKey, btnEl);
+            }
+        }
+
+        function startNavigation(nodeKey, btnEl) {
+            if (isProcessing) return;
+
+            let nodeData = nodes[nodeKey];
+            if (!nodeData) return;
+
+            if (state.selectedDestination && state.selectedDestination.id === nodeData.id) {
+                return;
+            }
+
+            let wasRedirected = false;
+            let originalTime = nodeData.time;
+
+            if (nodeData.crowd === 'red') {
+                const altKey = Object.keys(nodes).find(k => nodes[k].category === nodeData.category && nodes[k].crowd === 'green');
+                if (altKey) {
+                    nodeData = nodes[altKey];
+                    wasRedirected = true;
+                }
+            }
+
+            isProcessing = true;
+
+            state.selectedDestination = nodeData;
+            updateMapHighlight();
+
+            els.navBtns.forEach(b => b.classList.remove('active'));
+            if (btnEl) {
+                btnEl.classList.add('active');
+            } else {
+                const btn = Array.from(els.navBtns).find(b => b.getAttribute('onclick').includes(`'${nodeKey}'`));
+                if (btn) btn.classList.add('active');
+            }
+
+            if (els.navSvg) els.navSvg.innerHTML = "";
+            els.btnNavNext.disabled = true;
+
+            els.navBtns.forEach(b => b.disabled = true);
+            els.btnMic.disabled = true;
+            els.btnReset.disabled = true;
+            document.querySelectorAll('.map-node').forEach(n => n.style.pointerEvents = 'none');
+
+            if (wasRedirected) {
+                els.naviText.textContent = `Navi: This is crowded (~${originalTime}). Suggesting a faster option nearby (~${nodeData.time}).`;
+                els.naviText.parentElement.style.color = "var(--warn)";
+            } else {
+                els.naviText.textContent = "Finding best route...";
+                els.naviText.parentElement.style.color = "var(--accent)";
+            }
+
+            showLoader("Calculating route...");
+
+            setTimeout(() => {
+                hideLoader();
+                isProcessing = false;
+
+                els.naviText.textContent = "Navi: Move towards the right corridor.";
+                els.naviText.parentElement.style.color = "var(--accent)";
+
+                setTimeout(() => {
+                    els.naviText.textContent = `Navi: Continue straight, destination ahead (~${nodeData.time}).`;
+                }, 1500);
+
+                drawRoute(nodeData.id);
+                vibrate(100);
+
+                els.navBtns.forEach(b => b.disabled = false);
+                els.btnMic.disabled = false;
+                els.btnReset.disabled = false;
+                els.btnNavNext.disabled = false;
+                document.querySelectorAll('.map-node').forEach(n => n.style.pointerEvents = 'auto');
+
+            }, 800);
+        }
+
+        function simulateVoice() {
+            if (isProcessing) return;
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                showToast("Voice recognition not supported in this browser.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            els.naviText.textContent = "Navi: Listening... Say 'Food', 'Washroom', or 'Gate'.";
+            els.naviText.parentElement.style.color = "var(--accent)";
+            showLoader("Listening...");
+            isProcessing = true;
+
+            let voiceTimeout = setTimeout(() => {
+                if (isProcessing) {
+                    recognition.stop();
+                    hideLoader();
+                    isProcessing = false;
+                    els.naviText.textContent = "Navi: Sorry, didn't catch that. Try saying Food, Washroom, or Gate.";
+                    els.naviText.parentElement.style.color = "var(--warn)";
+                }
+            }, 6000);
+
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                clearTimeout(voiceTimeout);
+                hideLoader();
+                isProcessing = false;
+
+                const transcript = event.results[0][0].transcript.toLowerCase();
+
+                let targetCategory = null;
+
+                if (transcript.includes('food')) {
+                    targetCategory = 'food';
+                } else if (transcript.includes('washroom')) {
+                    targetCategory = 'washroom';
+                } else if (transcript.includes('gate') || transcript.includes('exit')) {
+                    targetCategory = 'gate';
+                }
+
+                if (targetCategory) {
+                    els.naviText.textContent = `Navi: Heard you! Routing to ${targetCategory}...`;
+                    els.naviText.parentElement.style.color = "var(--accent)";
+                    vibrate(50);
+
+                    const btnMap = {
+                        'food': 'btnNavFood',
+                        'washroom': 'btnNavRest',
+                        'gate': 'btnNavGate'
+                    };
+                    const btn = document.getElementById(btnMap[targetCategory]);
+                    startNavigationByCategory(targetCategory, btn);
+                } else {
+                    els.naviText.textContent = "Navi: Sorry, didn't catch that. Try saying Food, Washroom, or Gate.";
+                    els.naviText.parentElement.style.color = "var(--warn)";
+                    vibrate([50, 50]);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                clearTimeout(voiceTimeout);
+                if (event.error === 'no-speech') {
+                    // Let the 6s timeout handle no-speech patience
+                    return;
+                }
+                hideLoader();
+                isProcessing = false;
+                els.naviText.textContent = "Navi: Sorry, didn't catch that. Try saying Food, Washroom, or Gate.";
+                els.naviText.parentElement.style.color = "var(--warn)";
+            };
+
+            recognition.onend = () => {
+                // Do not automatically show error on end. 
+                // Either onresult processed it, or the timeout will handle the lack of speech.
+            };
+        }
+
+        function resetNavigation() {
+            state.selectedDestination = null;
+            if (els.navBtns) els.navBtns.forEach(b => b.classList.remove('active'));
+            if (els.naviText) {
+                els.naviText.textContent = "Navi: Select a destination. I’ll guide you through the fastest route.";
+                els.naviText.parentElement.style.color = "var(--accent)";
+            }
+            if (els.navSvg) els.navSvg.innerHTML = "";
+            if (els.btnNavNext) els.btnNavNext.disabled = false;
+            updateMapHighlight();
+        }
+
+        let lastClickTime = 0;
+        function handleDebouncedClick(callback) {
+            const now = Date.now();
+            if (now - lastClickTime > 300) {
+                lastClickTime = now;
+                callback();
+            }
+        }
+
+        let isRenderingAlerts = false;
+        function renderAlerts() {
+            const alerts = document.getElementById("alerts");
+            if (!alerts) return;
+
+            if (isRenderingAlerts) return;
+            isRenderingAlerts = true;
+
+            alerts.innerHTML = "";
+
+            const alertsData = [
+                {
+                    icon: "🏏",
+                    title: "Match Update",
+                    message: "Innings break started – High rush expected at all facilities.",
+                    color: "var(--warn)"
+                },
+                {
+                    icon: "🚻",
+                    title: "Washrooms",
+                    message: "Washroom 1 is highly crowded (~25 mins). Suggesting Washroom 2 (~5 mins).",
+                    color: "var(--danger)"
+                },
+                {
+                    icon: "🍔",
+                    title: "Food Courts",
+                    message: "Food 1 has medium wait times (~15 mins). Suggesting Food 2 (~6 mins).",
+                    color: "var(--warn)"
+                },
+                {
+                    icon: "🚪",
+                    title: "Exit Gates",
+                    message: "Gate 1 is crowded (~25 mins). Optimal exit is Gate 3 (~6 mins).",
+                    color: "var(--accent)"
+                }
+            ];
+
+            // Render alerts
+            alertsData.forEach((alert, index) => {
+                const card = document.createElement("div");
+                card.style.background = "var(--card)";
+                card.style.padding = "16px";
+                card.style.borderRadius = "var(--radius)";
+                card.style.border = `1px solid ${alert.color}`;
+                card.style.display = "flex";
+                card.style.gap = "12px";
+                card.style.opacity = "0";
+                card.style.transform = "translateY(10px)";
+                card.style.transition = "opacity 300ms ease-out, transform 300ms ease-out";
+                card.style.alignItems = "center";
+
+                card.innerHTML = `
+                    <div style="font-size: 1.5rem; display: flex; align-items: center; justify-content: center; width: 32px;">${alert.icon}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: ${alert.color}; margin-bottom: 2px;">${alert.title}</div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.4;">${alert.message}</div>
+                    </div>
+                `;
+                alerts.appendChild(card);
+
+                setTimeout(() => {
+                    card.style.opacity = "1";
+                    card.style.transform = "translateY(0)";
+                }, index * 100);
+            });
+
+            setTimeout(() => {
+                isRenderingAlerts = false;
+            }, 300);
+        }
+
+        function markSeatReached(btn) {
+            if (navigator.vibrate) navigator.vibrate(200);
+            btn.textContent = "Enjoy the match! 🎉";
+            btn.disabled = true;
+            btn.style.opacity = "1";
+            btn.style.backgroundColor = "#166534"; // Darker green
+            btn.style.borderColor = "var(--accent)";
+            btn.style.color = "var(--text)";
+        }
+
+        function simulateMatchEnd(btn) {
+            btn = btn || document.querySelector('button[onclick^="simulateMatchEnd"]');
+            if (btn) {
+                btn.textContent = "⏳ Match is finishing...";
+                btn.disabled = true;
+            }
+
+            setTimeout(() => {
+                const card = document.getElementById("exitStrategyCard");
+                if (card) {
+                    const cardTextDiv = card.querySelector('div[style*="flex: 1"] > div:last-child');
+                    if (cardTextDiv) {
+                        cardTextDiv.textContent = "Match over! Gate 4 is highly crowded (~25 mins). Wait 10 mins or take the East Route to Gate 2 for a faster exit.";
+                    }
+                    card.style.display = "flex";
+                    if (navigator.vibrate) navigator.vibrate(100);
+                    setTimeout(() => {
+                        const phase = document.getElementById("phase5");
+                        if (phase) phase.scrollTo({ top: phase.scrollHeight, behavior: 'smooth' });
+                    }, 100);
+                }
+
+                if (btn) {
+                    btn.textContent = "Match Ended 🏁";
+                }
+
+                const matchStrip = document.getElementById("matchStrip");
+                if (matchStrip) {
+                    matchStrip.innerHTML = '<div style="font-weight: bold; font-size: 1.1rem; color: var(--text);">IND Wins! 🏆 | Final Score: 185/5 | Match Finished 🏏</div>';
+                }
+            }, 8000);
+        }
+
+    </script>
+</body>
+
+</html>
